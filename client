@@ -1,0 +1,126 @@
+declare_id!("HsWvhaRX9FVuSzxj5kc3ZkTGzRQg5L2YZKGeqzVVDoax");
+
+#[program]
+pub mod vacunas_registro {
+    use super::*;
+
+    // CREATE - Crear registro de vacunas
+    pub fn crear(
+        ctx: Context<Crear>,
+        paciente: String,
+        covid_aplicada: bool,
+        covid_fecha: String,
+        sarampion_aplicada: bool,
+        sarampion_fecha: String,
+    ) -> Result<()> {
+        require!(paciente.len() <= 50, ErrorVacunas::NombreMuyLargo);
+        require!(covid_fecha.len() <= 20, ErrorVacunas::FechaMuyLarga);
+        require!(sarampion_fecha.len() <= 20, ErrorVacunas::FechaMuyLarga);
+
+        let registro = &mut ctx.accounts.registro;
+        registro.authority = ctx.accounts.authority.key();
+        registro.paciente = paciente;
+        registro.covid_aplicada = covid_aplicada;
+        registro.covid_fecha = covid_fecha;
+        registro.sarampion_aplicada = sarampion_aplicada;
+        registro.sarampion_fecha = sarampion_fecha;
+
+        msg!("Registro de vacunas CREADO exitosamente");
+        Ok(())
+    }
+
+    // UPDATE - Actualizar registro de vacunas
+    pub fn actualizar(
+        ctx: Context<Actualizar>,
+        paciente: String,
+        covid_aplicada: bool,
+        covid_fecha: String,
+        sarampion_aplicada: bool,
+        sarampion_fecha: String,
+    ) -> Result<()> {
+        require!(paciente.len() <= 50, ErrorVacunas::NombreMuyLargo);
+        require!(covid_fecha.len() <= 20, ErrorVacunas::FechaMuyLarga);
+        require!(sarampion_fecha.len() <= 20, ErrorVacunas::FechaMuyLarga);
+
+        let registro = &mut ctx.accounts.registro;
+        registro.paciente = paciente;
+        registro.covid_aplicada = covid_aplicada;
+        registro.covid_fecha = covid_fecha;
+        registro.sarampion_aplicada = sarampion_aplicada;
+        registro.sarampion_fecha = sarampion_fecha;
+
+        msg!("Registro de vacunas ACTUALIZADO exitosamente");
+        Ok(())
+    }
+
+    // DELETE - Eliminar registro de vacunas
+    pub fn eliminar(_ctx: Context<Eliminar>) -> Result<()> {
+        msg!("Registro de vacunas ELIMINADO exitosamente");
+        Ok(())
+    }
+}
+
+// ──────────── CONTEXTOS ────────────
+
+#[derive(Accounts)]
+pub struct Crear<'info> {
+    #[account(
+        init,
+        payer = authority,
+        space = 8 + 32 + (4 + 50) + 1 + (4 + 20) + 1 + (4 + 20),
+        seeds = [b"registro", authority.key().as_ref()],
+        bump
+    )]
+    pub registro: Account<'info, RegistroVacunas>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct Actualizar<'info> {
+    #[account(
+        mut,
+        seeds = [b"registro", authority.key().as_ref()],
+        bump,
+        has_one = authority
+    )]
+    pub registro: Account<'info, RegistroVacunas>,
+    pub authority: Signer<'info>,
+}
+
+#[derive(Accounts)]
+pub struct Eliminar<'info> {
+    #[account(
+        mut,
+        seeds = [b"registro", authority.key().as_ref()],
+        bump,
+        has_one = authority,
+        close = authority
+    )]
+    pub registro: Account<'info, RegistroVacunas>,
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
+// ──────────── CUENTA ────────────
+
+#[account]
+pub struct RegistroVacunas {
+    pub authority: Pubkey,          // 32 bytes
+    pub paciente: String,           // 4 + 50 bytes
+    pub covid_aplicada: bool,       // 1 byte
+    pub covid_fecha: String,        // 4 + 20 bytes
+    pub sarampion_aplicada: bool,   // 1 byte
+    pub sarampion_fecha: String,    // 4 + 20 bytes
+}
+
+// ──────────── ERRORES ────────────
+
+#[error_code]
+pub enum ErrorVacunas {
+    #[msg("El nombre del paciente excede 50 caracteres")]
+    NombreMuyLargo,
+    #[msg("La fecha excede 20 caracteres")]
+    FechaMuyLarga,
+}
